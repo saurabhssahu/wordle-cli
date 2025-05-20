@@ -28,9 +28,8 @@ public class WordleMain {
                 String guess = scanner.nextLine().trim();
 
                 if (guess.length() == WordleGame.getWordLength()) {
-                    String feedback = game.evaluateGuess(guess);
+                    String feedback = game.evaluateGuess(guess, game.getTargetWord());
                     log.info("Result: {}", feedback);
-                    log.info("feedback length : {}", feedback.length());
                     attempts++;
 
                     if (guess.equalsIgnoreCase(game.getTargetWord())) {

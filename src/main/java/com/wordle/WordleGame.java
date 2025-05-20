@@ -5,7 +5,9 @@ import lombok.Getter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -31,44 +33,48 @@ public class WordleGame {
     /**
      * Evaluates the guess against the target word.
      *
-     * @param guess the guessed word
+     * @param guess the user's guessed word
+     * @param target the target word to match
      * @return the formatted feedback string with ANSI colors
      */
-    public String evaluateGuess(String guess) {
+    public String evaluateGuess(String guess, String target) {
         guess = guess.toUpperCase();
-        char[] target = targetWord.toCharArray();
-        char[] guessChars = guess.toCharArray();
-        boolean[] matchedTarget = new boolean[WORD_LENGTH];
-        boolean[] matchedGuess = new boolean[WORD_LENGTH];
-        StringBuilder feedback = new StringBuilder();
 
-        // First pass: correct position (GREEN)
-        for (int i = 0; i < WORD_LENGTH; i++) {
-            if (guessChars[i] == target[i]) {
-                matchedTarget[i] = true;
-                matchedGuess[i] = true;
-                feedback.append(colorWrap(guessChars[i], HighlightColor.GREEN));
-            } else {
-                feedback.append("_"); // placeholder to replace later
+        char[] guessChars = guess.toCharArray();
+        char[] targetChars = target.toCharArray();
+
+        // Track frequency of each character in the target
+        Map<Character, Integer> charCount = new HashMap<>();
+        for (char c : targetChars) {
+            charCount.put(c, charCount.getOrDefault(c, 0) + 1);
+        }
+
+        // First pass: mark correct letters (green)
+        HighlightColor[] colors = new HighlightColor[5];
+        for (int i = 0; i < 5; i++) {
+            if (guessChars[i] == targetChars[i]) {
+                colors[i] = HighlightColor.GREEN;
+                charCount.put(guessChars[i], charCount.get(guessChars[i]) - 1);
             }
         }
 
-        // Second pass: wrong position (YELLOW) or not in word (GRAY)
-        for (int i = 0; i < WORD_LENGTH; i++) {
-            if (matchedGuess[i]) continue;
-
-            boolean found = false;
-            for (int j = 0; j < WORD_LENGTH; j++) {
-                if (!matchedTarget[j] && guessChars[i] == target[j]) {
-                    matchedTarget[j] = true;
-                    found = true;
-                    break;
+        // Second pass: mark misplaced letters (yellow) or incorrect (gray)
+        for (int i = 0; i < 5; i++) {
+            if (colors[i] == null) {
+                char c = guessChars[i];
+                if (charCount.getOrDefault(c, 0) > 0) {
+                    colors[i] = HighlightColor.YELLOW;
+                    charCount.put(c, charCount.get(c) - 1);
+                } else {
+                    colors[i] = HighlightColor.GRAY;
                 }
             }
+        }
 
-            HighlightColor color = found ? HighlightColor.YELLOW : HighlightColor.GRAY;
-            int start = i * 9; // each formatted block is 9 characters long: "\u001B[xxm X \u001B[0m"
-            feedback.replace(start, start + 9, colorWrap(guessChars[i], color));
+        // Build feedback string with color codes
+        StringBuilder feedback = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            feedback.append(colorWrap(guessChars[i], colors[i]));
         }
 
         return feedback.toString();
